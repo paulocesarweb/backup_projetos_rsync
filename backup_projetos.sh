@@ -23,6 +23,12 @@ if [ "$CONFIRMAR" != "s" ]; then
     exit 0
 fi
 
+# Perguntar ao usuário o tipo de backup desejado
+echo "Escolha o tipo de backup:"
+echo "1) Backup completo"
+echo "2) Backup incremental"
+read -p "Digite 1 ou 2: " TIPO_BACKUP
+
 # Diretório de destino no disco externo
 DESTINO="${DISCO}/Projetos_Backup/"
 
@@ -35,7 +41,29 @@ DESTINO_COM_DATA="${DESTINO}${DATA}"
 # Criar o diretório de destino se não existir
 mkdir -p "$DESTINO_COM_DATA"
 
-# Executar o rsync
-rsync -avz --delete "$ORIGEM" "$DESTINO_COM_DATA"
+# Definir opções do rsync baseadas no tipo de backup
+case $TIPO_BACKUP in
+    1)
+        # Backup completo
+        RSYNC_OPCOES="-avz --delete"
+        ;;
+    2)
+        # Backup incremental
+        RSYNC_OPCOES="-avz --delete --link-dest=${DESTINO}ultimo_backup/"
+        ;;
+    *)
+        echo "Opção inválida. Backup cancelado."
+        exit 1
+        ;;
+esac
+
+# Executar o rsync com as opções definidas
+rsync $RSYNC_OPCOES "$ORIGEM" "$DESTINO_COM_DATA"
+
+# Atualizar o diretório do último backup para backups incrementais
+if [ $TIPO_BACKUP -eq 2 ]; then
+    ln -sfn "$DESTINO_COM_DATA" "${DESTINO}ultimo_backup"
+fi
 
 echo "Backup concluído em $DESTINO_COM_DATA"
+
